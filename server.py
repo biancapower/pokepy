@@ -3,28 +3,52 @@
 # Pokécolours
 
 from flask import Flask
-from flask import request
+from flask import request # work with the current Flask request
 from flask import Response
 
 app = Flask(__name__)
 
-import requests
+import requests # <-- can do requests to an API
 
 POKEMON_API_URL = 'https://pokeapi.co/api/v2/'
 
 COLOUR_URL = POKEMON_API_URL + 'pokemon-color'
 
 
+class PokemonApiCache:
+    def __init__(self):
+        self.request_history = {}
+
+    def get(self, url):
+        """Generically requests a generic URL and caches result"""
+        
+        # have we already made this request before
+        if url in self.request_history:
+            previous_result = self.request_history[url]
+            return previous_result
+
+        # no we haven't so do it
+        result = requests.get(url).json() # <-- this does not give you JSON
+                                          # actually it treats the response as JSON
+                                          # but parses it into a Python dict thing
+        # cache the result
+        self.request_history[url] = result
+
+        return result
+
+request_cache = PokemonApiCache()
+
+
 def get_pokemon_by_colour(colour):
     # list species matching colour
-    colour_json = requests.get(f'{COLOUR_URL}/{colour}').json()
+    colour_json = request_cache.get(f'{COLOUR_URL}/{colour}')
     pokemon_species_list = colour_json['pokemon_species']
 
     for pokemon_species_link in pokemon_species_list:
         print(pokemon_species_link['name'])
 
         # GET information about a species
-        pokemon_species_json = requests.get(pokemon_species_link['url']).json()
+        pokemon_species_json = request_cache.get(pokemon_species_link['url'])
 
 
         # since a species may have multiple varieties
@@ -33,7 +57,7 @@ def get_pokemon_by_colour(colour):
         for variety in varieties:
             # (a variety is a pokemon)
             # GET the pokemon information
-            pokemon_json = requests.get(variety['pokemon']['url']).json()
+            pokemon_json = request_cache.get(variety['pokemon']['url'])
 
             pokemon_name = pokemon_json['name']
             image_url = pokemon_json['sprites']['front_default']
@@ -56,7 +80,7 @@ def get_by_colour(colour):
 @app.route('/')
 def index():
 
-    colours_json = requests.get(COLOUR_URL).json()
+    colours_json = request_cache.get(COLOUR_URL)
     colours_list = colours_json['results']
 
     html = ''
