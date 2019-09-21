@@ -36,36 +36,49 @@ class PokemonApiCache:
 
         return result
 
+    def generate_pokemon_names_and_images_by_colour(self, colour):
+        """returns a generator containing
+            (pokemon_name, pokemon_image_url)"""
+        
+        # list species matching colour
+        pokemon_species_list = self.get_species_by_colour(colour)
+        
+        for pokemon_species_link in pokemon_species_list:
+            print(pokemon_species_link['name'])
+
+            # GET information about a species
+            pokemon_species_json = self.get(pokemon_species_link['url'])
+
+
+            # since a species may have multiple varieties
+            # GET each variety
+            varieties = pokemon_species_json['varieties']
+            for variety in varieties:
+                # (a variety is a pokemon)
+                # GET the pokemon information
+                pokemon_json = self.get(variety['pokemon']['url'])
+
+                pokemon_name = pokemon_json['name']
+                image_url = pokemon_json['sprites']['front_default']
+                
+                yield (pokemon_name, image_url)
+
+
+    def get_species_by_colour(self, colour):
+        colour_json = self.get(f'{COLOUR_URL}/{colour}')
+        pokemon_species_list = colour_json['pokemon_species']
+        return pokemon_species_list
+
+
 request_cache = PokemonApiCache()
 
+def render_pokemon_list(pokemon_generator):
+    for (pokemon_name, image_url) in pokemon_generator:
 
-def get_pokemon_by_colour(colour):
-    # list species matching colour
-    colour_json = request_cache.get(f'{COLOUR_URL}/{colour}')
-    pokemon_species_list = colour_json['pokemon_species']
+        html = f'<img src="{image_url}" alt="{pokemon_name}">{pokemon_name}<br><br>'
+        #html = render_template("index.html")
+        yield html
 
-    for pokemon_species_link in pokemon_species_list:
-        print(pokemon_species_link['name'])
-
-        # GET information about a species
-        pokemon_species_json = request_cache.get(pokemon_species_link['url'])
-
-
-        # since a species may have multiple varieties
-        # GET each variety
-        varieties = pokemon_species_json['varieties']
-        for variety in varieties:
-            # (a variety is a pokemon)
-            # GET the pokemon information
-            pokemon_json = request_cache.get(variety['pokemon']['url'])
-
-            pokemon_name = pokemon_json['name']
-            image_url = pokemon_json['sprites']['front_default']
-            
-            
-            html = f'<img src="{image_url}" alt="{pokemon_name}">{pokemon_name}<br><br>'
-
-            yield html
 
 # Order of routes is important
 
@@ -73,8 +86,11 @@ def get_pokemon_by_colour(colour):
 @app.route('/<colour>')
 def get_by_colour(colour):
 
-    return Response(get_pokemon_by_colour(colour))
-    #return render_template("index.html")
+    # get (generator of) list of pokemon matching the colour
+    pokemon_generator = request_cache.generate_pokemon_names_and_images_by_colour(colour)
+
+    # take the list and render as (generator of) HTML
+    return Response(render_pokemon_list(pokemon_generator))
 
 # This one will match otherwise
 @app.route('/')
