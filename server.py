@@ -95,7 +95,7 @@ def get_by_colour(colour):
 # This one will match otherwise
 @app.route('/')
 def index():
-
+    return "HELLO HEROKU"
     colours_json = request_cache.get(COLOUR_URL)
     colours_list = colours_json['results']
 
