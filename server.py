@@ -2,17 +2,22 @@
 
 # Pokécolours
 
+import os
+
 from flask import Flask
 from flask import request # work with the current Flask request
 from flask import Response
 
 app = Flask(__name__)
 
+SECRET_COLOURS = os.environ.get("POKE_COLOURS")
+
 import requests # <-- can do requests to an API
 
 POKEMON_API_URL = 'https://pokeapi.co/api/v2/'
 
-COLOUR_URL = POKEMON_API_URL + 'pokemon-color'
+# COLOUR_URL = POKEMON_API_URL + 'pokemon-color'
+COLOUR_URL = POKEMON_API_URL + SECRET_COLOURS
 
 
 class PokemonApiCache:
@@ -95,7 +100,7 @@ def get_by_colour(colour):
 # This one will match otherwise
 @app.route('/')
 def index():
-    # return "HELLO HEROKU"
+    return SECRET_COLOURS
     colours_json = request_cache.get(COLOUR_URL)
     colours_list = colours_json['results']
 
